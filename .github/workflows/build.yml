@@ -2,9 +2,8 @@ name: Cross-Platform Build
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - 'v*'  # Trigger only on version tags like v1.0.0
 
 jobs:
   build:
