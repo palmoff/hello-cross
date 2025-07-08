@@ -1,13 +1,13 @@
-name: Cross-Platform Build
+name: Cross-Platform Release
 
 on:
   push:
     tags:
-      - 'v*'  # Trigger only on version tags like v1.0.0
+      - 'v*'
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }} ${{ matrix.arch }}
+    name: Build
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -40,21 +40,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust target
+      - name: Install target
         run: rustup target add ${{ matrix.target }}
 
-      - name: Install build dependencies (for Linux ARM)
+      - name: Install dependencies (for ARM Linux)
         if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build
+        run: cargo build --release --target=${{ matrix.target }}
+
+      - name: Rename binary
         run: |
-          cargo build --release --target=${{ matrix.target }}
+          ext=""
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then ext=".exe"; fi
+          mv target/${{ matrix.target }}/release/hello-cross target/${{ matrix.target }}/release/hello-${{ matrix.os }}-${{ matrix.arch }}$ext
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: hello-${{ matrix.os }}-${{ matrix.arch }}
-          path: target/${{ matrix.target }}/release/hello-cross${{ matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}
+          path: target/${{ matrix.target }}/release/hello-${{ matrix.os }}-${{ matrix.arch }}*
+  
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display artifacts
+        run: ls -R artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
