@@ -59,6 +59,7 @@ jobs:
         run: cargo build --release --target=${{ matrix.target }}
 
       - name: Rename binary
+        shell: bash
         run: |
           ext=""
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then ext=".exe"; fi
